@@ -54,7 +54,7 @@ int main()
     RK_LOGE("29003XTKZ:2025-11-05-配置文件");
     setlocale(LC_CTYPE, "");
 
-	// 配置文件加载 test
+	// 配置文件加载
 	g_configManager = new ConfigManager("config/Config.ini");
 	g_configManager->init_GDConfigInfo();
 
