@@ -1,0 +1,125 @@
+{
+  "name": "rk3588_media_socA",
+
+  "#vdec": {
+    "vdec_chn_0": {
+      "resource": "resource/vdec_video/main_video.h264",
+      "vpss_grp_bind": [ 0, 1 ]
+    }
+  },
+
+    "vpss": {
+    "vpss_grp_0": {
+      "grp_src_frame_rate": 50,
+      "grp_dst_frame_rate": 50,
+      "grp_pixel_format": "yuv422",
+      "grp_size": [ 1920, 1080 ],
+      "chn_num": 4,
+      "chn_0": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 1920, 1080 ]
+      },
+      "chn_1": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 1920, 1080 ]
+      },
+      "chn_2": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 1920, 1080 ]
+      },
+      "chn_3": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 1920, 1080 ]
+      }
+    },
+    "vpss_grp_1": {
+      "grp_src_frame_rate": 50,
+      "grp_dst_frame_rate": 50,
+      "grp_pixel_format": "yuv420",
+      "grp_size": [ 640, 512 ],
+      "chn_num": 4,
+      "chn_0": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 640, 512 ]
+      },
+      "chn_1": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 640, 512 ]
+      },
+      "chn_2": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 640, 512 ]
+      },
+      "chn_3": {
+        "chn_src_frame_rate": 50,
+        "chn_dst_frame_rate": 50,
+        "chn_pixel_format": "bgr888",
+        "chn_scale": [ 640, 512 ]
+      }
+    }
+  },
+
+  "venc": {
+    "venc_chn_0": {
+      "src_frame_rate": 30,
+      "dst_frame_rate": 30,
+      "bitrate": 5000,
+      "size": [ 1920, 1080 ],
+      "chn_pixel_format": "bgr888",
+      "rtsp_port": 5543,
+      "rtsp_path": "/live"
+    },
+    "venc_chn_1": {
+      "src_frame_rate": 30,
+      "dst_frame_rate": 30,
+      "bitrate": 2000,
+      "size": [ 640, 512 ],
+      "chn_pixel_format": "bgr888",
+      "rtsp_port": 5544,
+      "rtsp_path": "/live"
+    },
+    "venc_chn_2": {
+      "src_frame_rate": 30,
+      "dst_frame_rate": 30,
+      "bitrate": 5000,
+      "size": [ 1920, 1080 ],
+      "chn_pixel_format": "bgr888",
+      "rtsp_port": 5545,
+      "rtsp_path": "/live"
+    },
+    "venc_chn_3": {
+      "src_frame_rate": 30,
+      "dst_frame_rate": 30,
+      "bitrate": 2000,
+      "size": [ 640, 512 ],
+      "chn_pixel_format": "bgr888",
+      "rtsp_port": 5546,
+      "rtsp_path": "/live"
+    }
+  },
+
+  "#rgn": {
+    "rgn_0": {
+      "is_show": true,
+      "layer": 0,
+      "position": [ 0, 0 ],
+      "size": [ 480, 320 ],
+      "font_size": 30,
+      "font_color": "green"
+    }
+  }
+}
