@@ -109,6 +109,12 @@ typedef struct JGZM_QUERY_MSG {
     uint8_t tail;             // 帧尾 0x55
 } JGZM_QUERY_MSG;
 
+// 禁射区
+struct ForbiddenZone {
+    float start_angle; // 起始角度 (-180 ~ 180)
+    float end_angle;   // 结束角度 (-180 ~ 180)
+};
+
 #pragma pack(pop)
 
 class Jgzm_msg {
@@ -173,6 +179,9 @@ public:
     void recvJGZMThread();                                      // 接收线程
     void queryJGZMStateThread();                                // 查询线程
 
+    // 禁射区设置接口
+    void SetForbiddenZone(float azi_start, float azi_end);
+    void ClearForbiddenZones();    
 private:
     JGZM_CONTROL_MSG* controlMsg;   // 控制指令
     JGZM_DATA_MSG* dataMsg;         // 常规数据
@@ -181,6 +190,12 @@ private:
     void calcChecksum(JGZM_CONTROL_MSG* msg);  // 计算校验和
     void sendMsg(uint8_t* data, int len);      // 发送数据
     void RecvMsg();                            // 接收数据
+
+    // 禁射区列表
+    std::vector<ForbiddenZone> m_forbiddenZones;
+
+    // 检查当前角度是否在禁射区
+    bool IsInForbiddenZone();
     
     // 数据转换
     uint16_t makeWord(uint8_t high, uint8_t low);

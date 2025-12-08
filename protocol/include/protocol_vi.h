@@ -196,6 +196,16 @@ public:
     void queryStateThread();                // 实时状态查询线程
     void parseRxMsg(uint8_t* buf, int len); // 解析接收到的状态数据
 
+    // ========== 跟焦曲线管理接口 ==========
+    // 加载配置文件
+    void LoadFocusCurve(const char* configPath);
+    // 保存当前曲线到文件
+    void SaveFocusCurve();
+    // 根据当前变倍值(zoom)获取最佳聚焦值(focus)，查表+插值
+    uint16_t GetBestFocus(uint16_t zoom_pos);
+    // 执行自动标定流程 (阻塞式，在独立线程或维护模式下调用)
+    void RunAutoCalibration();
+
     // ========== 工具函数 ==========
     void initSetting();                     // 初始化默认设置
     uint8_t calculateChecksum(const uint8_t* data, size_t len); // 计算校验和
@@ -230,6 +240,7 @@ public:
     
     float m_focal_length;                   // 当前焦距值（实际值）
     uint16_t m_focus_position;              // 当前聚焦位置
+    uint16_t m_zoom_position;               // 当前变倍位置 (应用Zoom Step，此处暂用焦距值作为Key)
     uint8_t m_gain_value;                   // 当前增益值（0-240）
     uint16_t m_exposure_value;              // 当前曝光值（1-20000μs）
     uint8_t m_brightness_value;             // 当前亮度值（1-255）
@@ -239,6 +250,11 @@ public:
 private:
     void sendMsg(const uint8_t* msg, size_t length); // 发送消息
     void initMsg();                         // 初始化消息
+
+    // 跟焦曲线相关
+    std::string m_curveConfigPath;
+    std::map<int, int> m_focusCurve; // Key: ZoomPos, Value: FocusPos
+    std::mutex m_curveMtx;
 };
 
 #endif // PROTOCOL_VI_H

@@ -122,6 +122,7 @@ int main()
 	std::thread t_vi_query(&Vi_msg::queryStateThread, ccdmsg);
 
     // 激光测照器线程
+    jgzmmsg->SetForbiddenZone(-10.0f, 10.0f); // 设置激光禁射区 (正前方 +/- 10度)
 	std::thread t_jgzm_recv(&Jgzm_msg::recvJGZMThread, jgzmmsg);
 	std::thread t_jgzm_query(&Jgzm_msg::queryJGZMStateThread, jgzmmsg);  
 

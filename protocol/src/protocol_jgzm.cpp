@@ -60,6 +60,12 @@ void Jgzm_msg::sendMsg(uint8_t* data, int len) {
 }
 
 void Jgzm_msg::sendSingleRangingCmd() {
+    // 安全检查
+    if (IsInForbiddenZone()) {
+        RK_LOGE("[SAFETY] Laser blocked! Current Azimuth: %.2f is in forbidden zone.", globalMsg->m_sfMsg.f_Azi_value);
+        return;
+    }
+    
     controlMsg->cmd = JGZM_SINGLE_RANGING;
     controlMsg->param1 = 0x00;
     controlMsg->param2 = 0x00;
@@ -70,6 +76,12 @@ void Jgzm_msg::sendSingleRangingCmd() {
 }
 
 void Jgzm_msg::sendContRangingCmd(uint8_t freq, uint16_t workTime) {
+    // 安全检查
+    if (IsInForbiddenZone()) {
+        RK_LOGE("[SAFETY] Laser blocked! Current Azimuth: %.2f is in forbidden zone.", globalMsg->m_sfMsg.f_Azi_value);
+        return;
+    }
+    
     controlMsg->cmd = JGZM_CONT_RANGING;
     controlMsg->param1 = freq;  // FREQ_1HZ/FREQ_2HZ/FREQ_3HZ/FREQ_4HZ/FREQ_5HZ
     controlMsg->param2 = 0x00;
@@ -467,4 +479,40 @@ uint32_t Jgzm_msg::makeDWord(uint8_t hh, uint8_t h, uint8_t l, uint8_t ll) {
 void Jgzm_msg::splitWord(uint16_t word, uint8_t& high, uint8_t& low) {
     high = (word >> 8) & 0xFF;
     low = word & 0xFF;
+}
+
+
+// 设置禁射区
+void Jgzm_msg::SetForbiddenZone(float azi_start, float azi_end) {
+    ForbiddenZone zone;
+    zone.start_angle = azi_start;
+    zone.end_angle = azi_end;
+    m_forbiddenZones.push_back(zone);
+    RK_LOGI("Set Laser Forbidden Zone: [%.2f, %.2f]", azi_start, azi_end);
+}
+
+void Jgzm_msg::ClearForbiddenZones() {
+    m_forbiddenZones.clear();
+}
+
+// 判断是否在禁射区
+bool Jgzm_msg::IsInForbiddenZone() {
+    // 获取当前伺服方位角
+    float current_azi = globalMsg->m_sfMsg.f_Azi_value;
+
+    for (const auto& zone : m_forbiddenZones) {
+        // 处理跨越 +/-180 度的情况
+        if (zone.start_angle > zone.end_angle) {
+            // 角度 > start 或者 角度 < end
+            if (current_azi >= zone.start_angle || current_azi <= zone.end_angle) {
+                return true;
+            }
+        } else {
+            // 正常区间：start <= 角度 <= end
+            if (current_azi >= zone.start_angle && current_azi <= zone.end_angle) {
+                return true;
+            }
+        }
+    }
+    return false;
 }

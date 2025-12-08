@@ -35,6 +35,9 @@ Vi_msg::Vi_msg() {
     m_gain_value = 0;
     m_exposure_value = 1;
     m_brightness_value = 128;
+
+    m_zoom_position = 0; 
+    m_curveConfigPath = "config/focus_curve.ini"; // 默认路径 config/focus_curve.ini
 }
 
 Vi_msg::~Vi_msg() {
@@ -582,6 +585,9 @@ void Vi_msg::parseRxMsg(uint8_t* buf, int len) {
     
     uint16_t focal_raw = makeShort(msgRx->FOCAL_HIGH, msgRx->FOCAL_LOW); // 解析焦距值（低字节在前）
     m_focal_length = focal_raw / 10.0f;  // 实际值的10倍
+    
+    m_zoom_position = focal_raw; // 将原始焦距值作为 Zoom Position (用于查表)
+    
     m_focus_position = makeShort(msgRx->FOCUS_HIGH, msgRx->FOCUS_LOW); // 解析聚焦位置（低字节在前）
     m_gain_value = msgRx->GAIN; // 解析增益值
     m_exposure_value = makeShort(msgRx->EXPOSURE_HIGH, msgRx->EXPOSURE_LOW); // 解析曝光值（低字节在前）
@@ -701,4 +707,126 @@ void Vi_msg::queryStateThread()
 		}
 		usleep(50000); // 主循环间隔
 	}
+}
+
+
+void Vi_msg::LoadFocusCurve(const char* configPath) {
+    m_curveConfigPath = configPath;
+    std::ifstream infile(m_curveConfigPath);
+    if (!infile.is_open()) {
+        RK_LOGW("Vi_msg: Config %s not found, using empty curve.", configPath);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(m_curveMtx);
+    m_focusCurve.clear();
+    std::string line;
+    int zoom, focus;
+    
+    while (std::getline(infile, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        std::istringstream iss(line);
+        if (iss >> zoom >> focus) {
+            m_focusCurve[zoom] = focus;
+        }
+    }
+    RK_LOGI("Vi_msg: Loaded %d points from focus curve.", m_focusCurve.size());
+}
+
+void Vi_msg::SaveFocusCurve() {
+    std::lock_guard<std::mutex> lock(m_curveMtx);
+    std::ofstream outfile(m_curveConfigPath);
+    if (!outfile.is_open()) {
+        RK_LOGE("Vi_msg: Failed to write config %s", m_curveConfigPath.c_str());
+        return;
+    }
+
+    outfile << "# Zoom_Pos Focus_Pos\n";
+    for (const auto& pair : m_focusCurve) {
+        outfile << pair.first << " " << pair.second << "\n";
+    }
+    outfile.close();
+    RK_LOGI("Vi_msg: Focus curve saved.");
+}
+
+uint16_t Vi_msg::GetBestFocus(uint16_t zoom_pos) {
+    std::lock_guard<std::mutex> lock(m_curveMtx);
+    if (m_focusCurve.empty()) return 0;
+
+    // 查找第一个 key >= zoom_pos 的迭代器
+    auto it = m_focusCurve.lower_bound(zoom_pos);
+
+    if (it == m_focusCurve.begin()) return it->second;
+    if (it == m_focusCurve.end()) return m_focusCurve.rbegin()->second;
+
+    // 线性插值
+    auto it_up = it;
+    auto it_low = std::prev(it);
+
+    int z1 = it_low->first;
+    int f1 = it_low->second;
+    int z2 = it_up->first;
+    int f2 = it_up->second;
+
+    if (z2 == z1) return f1;
+
+    double ratio = (double)(zoom_pos - z1) / (double)(z2 - z1);
+    return (uint16_t)(f1 + (f2 - f1) * ratio);
+}
+
+void Vi_msg::RunAutoCalibration() {
+    RK_LOGI("Vi_msg: Start Auto Calibration...");
+    
+    // 1. 清空旧数据
+    {
+        std::lock_guard<std::mutex> lock(m_curveMtx);
+        m_focusCurve.clear();
+    }
+
+    // 2. 标定流程 (简化版：假设从当前位置向广角端移动，实际应先移至长焦端)
+    // 注意：实际项目中 Zoom 的范围和步长需要根据相机协议文档确定
+    // 这里假设通过 zoomWide() 步进，或者通过 zoomDirect() 设定具体值
+    // 假设我们标定 10 个点
+    
+    // 模拟：先移动到最长焦 (需根据实际相机行程时间调整等待)
+    zoomTele(); 
+    usleep(5000 * 1000); // 移动5秒
+    zoomStop();
+    usleep(1000 * 1000);
+
+    for (int i = 0; i < 10; i++) {
+        RK_LOGI("Calibrating point %d...", i);
+
+        // A. 触发自动聚焦
+        focusOnePush();
+        usleep(3000 * 1000); // 等待聚焦完成
+
+        // B. 查询并记录当前状态
+        // 发送查询指令，等待 recv 线程更新 m_zoom_position 和 m_focus_position
+        // 注意：这里需要确保 recv 线程正在运行
+        usleep(500 * 1000); 
+        
+        int z = 0, f = 0;
+        {
+            std::lock_guard<std::mutex> lock(recv_mtx);
+            z = m_zoom_position; // 使用解析出的焦距值作为 Zoom Key
+            f = m_focus_position;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_curveMtx);
+            m_focusCurve[z] = f;
+        }
+        RK_LOGI("Point %d: Z=%d, F=%d", i, z, f);
+
+        // C. 移动到下一个变倍位置 (向广角端移动)
+        zoomWide();
+        usleep(800 * 1000); // 移动0.8秒
+        zoomStop();
+        usleep(1000 * 1000); // 等待电机稳定
+    }
+
+    // 3. 保存
+    SaveFocusCurve();
+    RK_LOGI("Vi_msg: Calibration Finished.");
 }
